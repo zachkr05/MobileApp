@@ -17,11 +17,11 @@
     "cors": "^2.8.5",
     "cron": "^4.3.0",
     "dotenv": "^16.5.0",
-    "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.44.2",
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.1",
     "nodemon": "^3.1.10"
   }
 }
