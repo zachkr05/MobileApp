@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { db } from '../config/db.js';
-import { users, tracks } from '../db/schema.js';
+import { db } from "./config/db.js";
+import { users, tracks } from "./db/schema.js";
 import { eq } from 'drizzle-orm';
 
 // This script simulates API calls to test Spotify integration
