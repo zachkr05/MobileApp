@@ -1,0 +1,72 @@
+import axios from 'axios';
+import { db } from '../config/db.js';
+import { users, tracks } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+
+// This script simulates API calls to test Spotify integration
+
+// Replace these with actual values for testing
+const TEST_USER_ID = 'test-user-id';
+const TEST_ACCESS_TOKEN = 'test-access-token';
+const TEST_REFRESH_TOKEN = 'test-refresh-token';
+
+async function testSpotifyIntegration() {
+  console.log('Starting Spotify integration test...');
+  
+  try {
+    // Test user profile endpoint
+    console.log('Testing profile endpoint...');
+    const profileResponse = await axios.post('http://localhost:8001/api/spotify/profile', {
+      userId: TEST_USER_ID,
+      access_token: TEST_ACCESS_TOKEN,
+      refresh_token: TEST_REFRESH_TOKEN
+    });
+    
+    console.log('Profile response:', profileResponse.data);
+    
+    // Test top tracks endpoint
+    console.log('Testing top tracks endpoint...');
+    const topTracksResponse = await axios.post('http://localhost:8001/api/spotify/top-tracks', {
+      userId: TEST_USER_ID,
+      access_token: TEST_ACCESS_TOKEN,
+      refresh_token: TEST_REFRESH_TOKEN
+    });
+    
+    console.log('Top tracks response:', topTracksResponse.data);
+    
+    // Test recently played endpoint
+    console.log('Testing recently played endpoint...');
+    const recentlyPlayedResponse = await axios.post('http://localhost:8001/api/spotify/recently-played', {
+      userId: TEST_USER_ID,
+      access_token: TEST_ACCESS_TOKEN,
+      refresh_token: TEST_REFRESH_TOKEN
+    });
+    
+    console.log('Recently played response:', recentlyPlayedResponse.data);
+    
+    // Verify data in database
+    console.log('Verifying database records...');
+    
+    const userRecord = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, TEST_USER_ID))
+      .limit(1);
+    
+    console.log('User record:', userRecord[0]);
+    
+    const trackRecords = await db
+      .select()
+      .from(tracks)
+      .limit(5);
+    
+    console.log('Sample track records:', trackRecords);
+    
+    console.log('Test completed successfully!');
+  } catch (error) {
+    console.error('Test failed:', error.response?.data || error.message);
+  }
+}
+
+// Run the test
+testSpotifyIntegration();
