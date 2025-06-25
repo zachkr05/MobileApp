@@ -1,3 +1,6 @@
+//db.js
+
+import 'dotenv/config'; // Always load env variables first
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { neon } from '@neondatabase/serverless';
 import { ENV } from './env.js';

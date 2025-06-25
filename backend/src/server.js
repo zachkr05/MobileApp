@@ -1,3 +1,5 @@
+//server.js
+
 import express from "express";
 import { ENV } from "./config/env.js";
 import axios from "axios";
@@ -6,9 +8,19 @@ import { db } from "./config/db.js";
 import { users } from "./db/schema.js";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, 'public')));
+
 const PORT = ENV.PORT || 8001;
+
+
+
 
 // Add JSON body parser middleware
 app.use(express.json());
@@ -16,9 +28,6 @@ app.use(express.json());
 // Client id test
 console.log("Client ID:", ENV.SPOTIFY_CLIENT_ID);
 
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ success: true });
-});
 
 // Spotify API endpoints
 app.get("/api/spotify/top-tracks", async (req, res) => {
@@ -239,104 +248,81 @@ app.post("/api/spotify/store-tracks", async (req, res) => {
     res.status(500).json({ error: "Failed to store track data" });
   }
 });
-
+// --- The /auth/login route remains the same ---
 app.get("/auth/login", (req, res) => {
-  const scope = 'user-read-private user-read-email user-top-read user-library-read user-read-recently-played';
-
-  const authUrl =
-    'https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
-      response_type: 'code',
-      client_id: ENV.SPOTIFY_CLIENT_ID,
-      scope: scope,
-      redirect_uri: ENV.REDIRECT_URI,
-    });
-
-  res.redirect(authUrl);
-});
-
-app.get("/auth/callback", async (req, res) => {
-  const code = req.query.code || null;
-
-  try {
-    const tokenResponse = await axios.post(
-      'https://accounts.spotify.com/api/token',
+    const scope = 'user-read-private user-read-email user-top-read user-library-read user-read-recently-played';
+  
+    const authUrl =
+      'https://accounts.spotify.com/authorize?' +
       querystring.stringify({
-        grant_type: 'authorization_code',
-        code: code,
+        response_type: 'code',
+        client_id: ENV.SPOTIFY_CLIENT_ID,
+        scope: scope,
         redirect_uri: ENV.REDIRECT_URI,
-      }),
-      {
-        headers: {
-          Authorization:
-            'Basic ' +
-            Buffer.from(ENV.SPOTIFY_CLIENT_ID + ':' + ENV.SPOTIFY_CLIENT_SECRET).toString('base64'),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
-
-    const { access_token, refresh_token, expires_in } = tokenResponse.data;
-
-    // Get user profile
-    const profileResponse = await axios.get('https://api.spotify.com/v1/me', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
+      });
+  
+    res.redirect(authUrl);
+  });
+  
+  
+  // ===================================================================
+  // START OF MODIFIED SECTION
+  // This /auth/callback route is now mobile-friendly
+  // ===================================================================
+  app.get("/auth/callback", async (req, res) => {
+    const code = req.query.code || null;
+    const error = req.query.error || null;
     
-    const profile = profileResponse.data;
-    
-    // For testing purposes, log the tokens
-    console.log('Access token:', access_token);
-
-    // Return user info and tokens in a way the client can capture
-    res.send(`
-      <html>
-        <body>
-          <h1>Login successful!</h1>
-          <p>You can close this window.</p>
-          <script>
-            // Store tokens and profile data in localStorage
-            window.opener.postMessage(
-              {
-                type: 'SPOTIFY_AUTH_SUCCESS',
-                profile: ${JSON.stringify(profile)},
-                tokens: {
-                  access_token: '${access_token}',
-                  refresh_token: '${refresh_token}',
-                  expires_in: ${expires_in}
-                }
-              }, 
-              '*'
-            );
-            // Close this window
-            window.close();
-          </script>
-        </body>
-      </html>
-    `);
-  } catch (err) {
-    console.error('Error getting Spotify tokens:', err.response?.data || err);
-    res.send(`
-      <html>
-        <body>
-          <h1>Login failed</h1>
-          <p>Error: ${err.message}</p>
-          <script>
-            window.opener.postMessage(
-              {
-                type: 'SPOTIFY_AUTH_ERROR',
-                error: '${err.message}'
-              }, 
-              '*'
-            );
-            // Close this window
-            setTimeout(() => window.close(), 5000);
-          </script>
-        </body>
-      </html>
-    `);
-  }
-});
+    // Choose your app's deep link scheme. Must match what you configure in Xcode/Android.
+    const deepLinkScheme = 'myawesomeapp://auth';
+  
+    if (error) {
+      console.error('Callback Error:', error);
+      const params = new URLSearchParams({ error });
+      return res.redirect(`${deepLinkScheme}?${params.toString()}`);
+    }
+  
+    try {
+      const tokenResponse = await axios.post(
+        'https://accounts.spotify.com/api/token',
+        querystring.stringify({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: ENV.REDIRECT_URI,
+        }),
+        {
+          headers: {
+            Authorization:
+              'Basic ' +
+              Buffer.from(ENV.SPOTIFY_CLIENT_ID + ':' + ENV.SPOTIFY_CLIENT_SECRET).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+  
+      const { access_token, refresh_token, expires_in } = tokenResponse.data;
+  
+      // Instead of sending HTML, we redirect to the mobile app's deep link
+      // with the tokens as query parameters.
+      const params = new URLSearchParams({
+        access_token,
+        refresh_token,
+        expires_in: expires_in.toString(),
+      });
+  
+      console.log('Redirecting to app with tokens.');
+      res.redirect(`${deepLinkScheme}?${params.toString()}`);
+  
+    } catch (err) {
+      console.error('Error getting Spotify tokens:', err.response?.data || err.message);
+      const params = new URLSearchParams({ error: err.message });
+      res.redirect(`${deepLinkScheme}?${params.toString()}`);
+    }
+  });
+  // ===================================================================
+  // END OF MODIFIED SECTION
+  // ===================================================================
+  
 
 app.listen(PORT, () => {
   console.log("Server is running on PORT:", PORT);

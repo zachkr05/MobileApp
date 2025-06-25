@@ -1,3 +1,5 @@
+//schema.js
+
 import {
   pgTable,
   serial,
