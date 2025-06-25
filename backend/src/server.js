@@ -248,6 +248,8 @@ app.post("/api/spotify/store-tracks", async (req, res) => {
     res.status(500).json({ error: "Failed to store track data" });
   }
 });
+
+
 // --- The /auth/login route remains the same ---
 app.get("/auth/login", (req, res) => {
     const scope = 'user-read-private user-read-email user-top-read user-library-read user-read-recently-played';

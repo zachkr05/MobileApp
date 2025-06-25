@@ -1,0 +1,7 @@
+{
+  "plugins": [
+    "expo-web-browser",
+    "expo-secure-store",
+    "expo-router"
+  ]
+}
