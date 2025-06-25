@@ -28,7 +28,7 @@ app.use(express.json());
 // Client id test
 console.log("Client ID:", ENV.SPOTIFY_CLIENT_ID);
 
-
+if (ENV.NODE_ENV === "production") job.start();
 // Spotify API endpoints
 app.get("/api/spotify/top-tracks", async (req, res) => {
   const { access_token, time_range = "medium_term", limit = 20 } = req.query;
