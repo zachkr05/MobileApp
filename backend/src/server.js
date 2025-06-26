@@ -322,50 +322,57 @@ app.get("/auth/login", (req, res) => {
     const code = req.query.code || null;
     const error = req.query.error || null;
     
-    // Choose your app's deep link scheme. Must match what you configure in Xcode/Android.
-    const deepLinkScheme = 'myawesomeapp://auth';
-  
+    // Check if request is from web (for development/testing)
+    const userAgent = req.get('User-Agent') || '';
+    const isWeb = userAgent.includes('Mozilla') && !userAgent.includes('Mobile');
+    
     if (error) {
       console.error('Callback Error:', error);
-      const params = new URLSearchParams({ error });
-      return res.redirect(`${deepLinkScheme}?${params.toString()}`);
+      
+      if (isWeb) {
+        // For web testing, show error page
+        return res.send(`
+          <html>
+            <body>
+              <h2>Authorization Error</h2>
+              <p>Error: ${error}</p>
+              <script>
+                // Try to send to mobile app anyway
+                setTimeout(() => {
+                  window.location.href = 'mobile://callback?error=${error}';
+                }, 2000);
+              </script>
+            </body>
+          </html>
+        `);
+      } else {
+        const params = new URLSearchParams({ error });
+        return res.redirect(`mobile://callback?${params.toString()}`);
+      }
     }
   
-    try {
-      const tokenResponse = await axios.post(
-        'https://accounts.spotify.com/api/token',
-        querystring.stringify({
-          grant_type: 'authorization_code',
-          code: code,
-          redirect_uri: ENV.REDIRECT_URI,
-        }),
-        {
-          headers: {
-            Authorization:
-              'Basic ' +
-              Buffer.from(ENV.SPOTIFY_CLIENT_ID + ':' + ENV.SPOTIFY_CLIENT_SECRET).toString('base64'),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-  
-      const { access_token, refresh_token, expires_in } = tokenResponse.data;
-  
-      // Instead of sending HTML, we redirect to the mobile app's deep link
-      // with the tokens as query parameters.
-      const params = new URLSearchParams({
-        access_token,
-        refresh_token,
-        expires_in: expires_in.toString(),
-      });
-  
-      console.log('Redirecting to app with tokens.');
-      res.redirect(`${deepLinkScheme}?${params.toString()}`);
-  
-    } catch (err) {
-      console.error('Error getting Spotify tokens:', err.response?.data || err.message);
-      const params = new URLSearchParams({ error: err.message });
-      res.redirect(`${deepLinkScheme}?${params.toString()}`);
+    if (isWeb) {
+      // For web testing, show success page with auto-redirect
+      return res.send(`
+        <html>
+          <body>
+            <h2>Authorization Successful!</h2>
+            <p>Redirecting to mobile app...</p>
+            <p>Authorization code: <code>${code}</code></p>
+            <script>
+              // Auto-redirect to mobile app
+              setTimeout(() => {
+                window.location.href = 'mobile://callback?code=${code}';
+              }, 2000);
+            </script>
+            <p><a href="mobile://callback?code=${code}">Click here if not redirected automatically</a></p>
+          </body>
+        </html>
+      `);
+    } else {
+      // For mobile, redirect directly
+      const params = new URLSearchParams({ code });
+      res.redirect(`mobile://callback?${params.toString()}`);
     }
   });
   // ===================================================================
