@@ -133,6 +133,53 @@ app.post("/api/spotify/refresh-token", async (req, res) => {
   }
 });
 
+// Add this endpoint to your server.js file
+app.post("/auth/token", async (req, res) => {
+  const { code, redirect_uri } = req.body;
+  
+  if (!code || !redirect_uri) {
+    return res.status(400).json({ 
+      error: "Missing required parameters: code and redirect_uri" 
+    });
+  }
+  
+  try {
+    const tokenResponse = await axios.post(
+      "https://accounts.spotify.com/api/token",
+      querystring.stringify({
+        grant_type: "authorization_code",
+        code: code,
+        redirect_uri: redirect_uri,
+      }),
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            `${ENV.SPOTIFY_CLIENT_ID}:${ENV.SPOTIFY_CLIENT_SECRET}`
+          ).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+    
+    const { access_token, refresh_token, expires_in, token_type } = tokenResponse.data;
+    
+    // Return tokens as JSON for mobile app consumption
+    res.json({
+      access_token,
+      refresh_token,
+      expires_in,
+      token_type
+    });
+    
+  } catch (error) {
+    console.error("Token exchange error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      error: "Failed to exchange authorization code for tokens",
+      details: error.response?.data
+    });
+  }
+});
+
 // Store user data
 app.post("/api/spotify/store-user", async (req, res) => {
   const { profile, access_token, refresh_token } = req.body;
