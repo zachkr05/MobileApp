@@ -12,5 +12,9 @@
     "react-native-screens": "~4.11.1",
     "expo-constants": "~17.1.6",
     "expo-status-bar": "~2.2.3"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "@types/react": "~19.0.10"
   }
 }
